@@ -1,0 +1,283 @@
+---
+title: "Statistical inference with the GSS data"
+output: 
+  html_document: 
+    fig_height: 4
+    highlight: pygments
+    theme: spacelab
+---
+
+## Setup
+Since 1972, the General Social Survey (GSS) has been monitoring societal change and studying the growing complexity of American society. The GSS aims to gather data on contemporary American society in order to monitor and explain trends and constants in attitudes, behaviors, and attributes; to examine the structure and functioning of society in general as well as the role played by relevant subgroups; to compare the United States to other societies in order to place American society in comparative perspective and develop cross-national models of human society; and to make high-quality data easily accessible to scholars, students, policy makers, and others, with minimal cost and waiting.
+
+GSS questions cover a diverse range of issues including national spending priorities, marijuana use, crime and punishment, race relations, quality of life, confidence in institutions, and sexual behavior.
+
+(From online resources: http://guides.library.duke.edu/c.php?g=289704&p=1930833, http://gss.norc.org)
+
+### Load packages
+
+```{r load-packages, message = FALSE}
+library(ggplot2)
+library(dplyr)
+library(statsr)
+```
+
+### Load data
+
+```{r load-data}
+load("/Users/sophia_lil/Documents/Coursera/Inferential Statistics/Week 5/gss.Rdata")
+```
+
+* * *
+
+## Part 1: About Data
+#### Background Introduction
+From 1972 until 1993, the GSS was administered almost annually. The target sample size for the annual surveys was 1500; actual sample sizes ranged between 1372 (1990) and 1613 (1972). Additionally, there were oversamples of black respondents in 1982 (oversample of 354) and 1987 (oversample of 353). There were no GSSs in 1979, 1981, or 1992. Since 1994 the GSS has been administered to two samples in even-numbered years, each with a target sample size of 1500, rather than to a single 1500-person sample each year. Total sample sizes for these biennial GSSs ranged between 2765 (2002) and 2992 (1994). In 2006 a third sample was added and the sample size was 4510. There have been no oversamples during this period.
+
+#### Data Selection
+The household address was randomly selected from a scientific sample designed to represent a cross-section of the country. The random selection of households from across the United States ensures that the results of the survey are scientifically valid. All households from across the country had an equal chance of being selected for this survey. These ensure that the sample statistics can be generalized to the whole US population. 
+
+Respondents were interviewed with survey questions at home or other places that the respondents prefer. The interview takes approximately 90 minutes for most people. Not all the questions were asked to all respondents. There are several reasons that questions may be asked of only some GSS respondents. First, some questions are not applicable to some respondents. For example, the question on marital happiness (HAPMAR) is only asked of currently married respondents. Second, since 1988 many items in the replicating core of the GSS have been measured for a random two-thirds of each sample. This enables the GSS to monitor more trends than would be possible if each core item was asked of each respondent. There are three overlapping “ballots”, so that the bivariate association of every core item with every other core item can be measured each year. 
+
+#### Implications from Data
+Any analytical conclusion derived from this study is associated but not causal, because other potential factors are not discussed and excluded. Additionally, there might be biases in results because respondents can choose not to answer all the questions, making the rest of answers not convincing enough when representing whole population. 
+
+* * *
+
+## Part 2: Research question
+
+The life quality is assumed to be stronly related to people's income condition. This study will focus on the changes in family income, people's satisfication about salary, and relationships between income level and education level. 
+
+**1.From 1972 to 2012, is there any difference in average family income? How can sample income data imply the real US population average income?**
+
+**2. Is the proportion of people who are satisfied about income different from 1972 to 2012? Is income satisfication related to labor force status?**
+
+**3. Family income might be related to education level. Is there any difference between education level in 1972 and 2012? Using a more recent year, 2012 as an example, do high-educated people and non high-educated people have equal average family income in 2012?**
+
+* * *
+
+## Part 3: Exploratory data analysis
+#### 3.1 Income vs. Year
+
+We are interested in any change in 1972 and 2012, so only data collected in these two years are used:
+
+```{r select data}
+gss_12 <- gss %>%
+  filter(year == '1972' | year == '2012')
+```
+
+Let's take a look at family income. (variable: coninc)
+
+```{r income data stats}
+gss_12 %>%
+  group_by(year) %>%
+  filter(!is.na(coninc), !is.na(year)) %>%
+  summarise(mean_income = mean(coninc), median_income = median(coninc), max_income = max(coninc), min_income = min(coninc))
+```
+
+Although the mean income and maximum income are both higher in 2012 than in 1972, there are extremely low income reported in 2012. 
+
+```{r income data plot}
+gss_12 %>%
+  filter(!is.na(coninc), !is.na(year)) %>%
+  group_by(year) %>%
+  ggplot(aes(x=factor(year), y=coninc)) + geom_boxplot()
+    geom_dotplot(binaxis = 'y', binwidth = 0.5, stackdir = 'center')
+```
+
+Family income in 1972 and 2012 show similar median. Family income in 2012 shows a wider IQR range, implying that people have more diverse ways for living in mordern days, which may aggravate the differences in family income.  
+
+#### 3.2 Income vs. Satisfication
+
+How many people are satisfied with their financial condition? We can use barplot to display the satisfication in 1972 and 2012 :(variable: satfin) 
+
+```{r}
+ggplot(data = gss_12, aes(x = year, fill = satfin)) +
+  geom_bar() +
+  xlab("Year") + 
+  ylab("Frequency") + 
+  ggtitle("Distribution of satistication level given year")
+```
+
+We can see that in both years, respondents answered 'More or less satisfied' are dominated. If we consider the answer 'Satisfied' and 'More or less satisfied' both as 'satisfied', 'Not at all' as 'unsatisfied', we can further analyze respondents' satisfication with their labor force status. 
+
+We start with creating a new variable called 'satis' which has two categories: satisfied and unsatisfied. 
+
+```{r creat satis variable}
+gss_12 <- gss_12 %>%
+  mutate(satis = ifelse(satfin == 'Not At All Sat', "unsatisfied", "satisfied"))
+```
+
+Then we create a barplot to present the distribution of labor force condition (variable: wrkstat) when people are satisfied with their financial condition: 
+
+```{r}
+gss_satis <- gss_12 %>%
+  filter(satis == 'satisfied')
+```
+
+```{r plot}
+ggplot(data = gss_satis, aes(x = year, fill = wrkstat)) +
+    geom_bar() +
+    xlab("Year") + 
+    ylab("Frequency") + 
+    ggtitle("Distribution of labor force condition for people satisfied with salary")
+```
+
+Working fulltime is dominated. Retired people and keeping house people also make up a considerable proportion. To be more precise about the data distribution, we can calculate the proportion. For example, for people are working fulltime:  
+
+```{r}
+gss_satis %>%
+  summarise(n1=n())
+```
+
+```{r}
+gss_satis %>%
+  group_by(wrkstat) %>%
+  summarise(n2=n())
+```
+
+```{r}
+1281/2636
+```
+
+1281 people are working full time out of 2636. Almost (50%) people of under 'satisfied' category are full-time worker. 
+
+#### 3.3 Income vs. Education Level
+
+Let's start with a brief visualization of education level of respondents in 1972 and 2012 (variable: educ): 
+
+```{r}
+gss_12 %>%
+  group_by(year) %>%
+  filter(!is.na(educ), !is.na(year)) %>%
+  summarise(mean_educ = mean(educ), median_educ = median(educ), max_educ = max(educ), min_educ = min(educ))
+```
+
+The variable represents highest year of school completed. The minimum school year in 1972 and 2012 is both 0, meaning that there are respondents that haven't been to school at all. The maximum year of school completed are both 20. Mean and median of average school year are similar. 
+
+We can also visualize the data to see the distribution:
+
+```{r}
+gss_12 %>%
+  filter(year == 1972) %>%
+  ggplot(aes(x = educ)) +
+  geom_histogram(binwidth = 2) +
+  xlab("Average education Level") + 
+  ylab("Frequency") + 
+  ggtitle("Average education level in 1972")
+```
+
+```{r}
+gss_12 %>%
+  filter(year == 2012) %>%
+  ggplot(aes(x = educ)) +
+  geom_histogram(binwidth = 2) +
+  xlab("Average education Level") + 
+  ylab("Frequency") + 
+  ggtitle("Average education level in 2012")
+```
+
+Both distributions are unimodal with peak around 12 years. This means most people have completed high school. A significant increase of people who completed more than high school can be found in distribution of 2012.
+
+Is there any direct relationship between income and school year? We can scatter plot income and school year to see if there is any relationship. For example, for 2012: 
+
+```{r}
+ggplot(data = gss_12, aes(x = educ, y = coninc)) +
+  geom_point()
+```
+
+Apparently, there is no obvious relationship between average family income and school year. 
+
+* * *
+
+## Part 4: Inference
+
+Before any hypothesis test or confidence interval calculation, we need to check the condition: 
+1) Independence: As stated in Part I, samples were randomly selected, and were smaller than 10% of whole US population (the whole population is 318.9 million). This condition is always satisified in this study. 
+2) Since sample size is greater than 30, the sampling distribution can be regarded as a normal distribution. 
+
+#### 4.1 Income vs. Year
+Sampling distribution can be used to generalize population distribution. Use 95% CL, we can create the income range in 1972 and 2012: 
+
+```{r ci-1972}
+gss_1972 <- gss_12 %>%
+  filter(year == '1972') %>%
+  mutate(coninc_1972 = coninc)
+  inference(y = coninc_1972, data = gss_1972, statistic = "mean", type = "ci", method = "theoretical")
+```
+
+```{r ci-2012}
+gss_2012 <- gss_12 %>%
+  filter(year == '2012') %>%
+  mutate(coninc_2012 = coninc)  
+  inference(y = coninc_2012, data = gss_2012, statistic = "mean", type = "ci", method = "theoretical")
+```
+
+Therefore, when estimating income range in 1972 and 2012, we would say: we are 95% confident that US people living in 1972 have average income (37061.1618 , 39775.8287); and 95% confident that US people living in 2012 have average income (46198.354 , 50571.4389). 
+
+But is there any significant change in average family income in 1972 and 2012? Use 95% CL, we can conduct hypothesis test. Null hypothesis: there is no difference in average family income in 1972 and 2012; alternative hypothesis: there is difference in average family income in 1972 and 2012. This is test with one numerical and one categorical variable (with two levels). Samples were randomly selected, sample size is greater than 30 and smaller than 10% of whole US population. 
+
+```{r}
+inference(y = coninc, x = year, data = gss_12, statistic = "mean", type = "ht", null = 0, 
+          alternative = "twosided", method = "theoretical")
+```
+
+p_value = < 0.0001, which is extremely small. Thus, we can reject null hypothesis and confirm that there is significant difference bewteen average family income in 1972 and 2012. 
+
+#### 4.2 Income vs. Satisfication
+
+In above section, we have concluded that 'More or less satisfied about finantial condition' are dominated. Is the satisfication level of both years the same or not? We can conduct a hypothesis test to analyze the satisfication level in 1972 and 2012. This is test with two categorical variables. Null hypothesis is: there is no difference between the proportion of satisfied people in 1972 and 2012. Alternative hypothesis is: there is difference between the proportion of satisfied people in 1972 and 2012. Confidence level is 95%.
+
+```{r}
+inference(y = satis, x = year, data = gss_12, statistic = "proportion", type = "ht", null = 0, 
+          alternative = "twosided", method = "theoretical", success = 'satisfied')
+```
+
+p_value = < 0.0001 which is really small, so we can reject null hypothesis and conclude that there is significant difference between people who are satisfied with their financial condition. 
+
+#### 4.3 Income vs. Education Level
+##### 4.3.1 Education Level
+
+Is there any difference between average education level in 1972 and 2012? There are two ways to address this queston. First way is to conduct hypothesis test. Samples were randomly selected, sample size is greater than 30 and smaller than 10% of whole US population. Assume there is no difference in average education level in 1972 and 2012 (null hypothesis). Alternative hypothesis is there is difference in average education level in 1972 and 2012. Then conduct hypothesis test under 95% CL: 
+
+```{r}
+inference(y = educ, x = year, data = gss_12, statistic = "mean", type = "ht", null = 0, 
+          alternative = "twosided", method = "theoretical")
+```
+
+p_value = < 0.0001 which is really small, so we can reject null hypothesis and conclude that there is significant difference of education level in 1972 and 2012. 
+
+The other way is to calculate the range of the difference of mean of highest school year in 1972 and 2012 under 95% CL.
+
+```{r}
+gss_12 %>%
+  inference(y = educ, x = year, data = gss_12, statistic = "mean", type = "ci", method = "theoretical", order = c("2012","1972"))
+```
+
+We are 95% confident that the average school year in 2012 is (1.9825 , 2.4191) larger than that in 1972. The range does not include 0, meaning the null hypothesis is wrong. 
+
+##### 4.3.2 Income vs. Education Level
+
+If we consider those who completed bachelor degree are high-educated people, we can create a new variable 'edu':
+
+```{r}
+gss_12<- gss_12 %>%
+  mutate(edu = ifelse(educ >= 16, "high-educated", "non high-educated"))
+```
+
+Are high-educated people and non high-educated people have equal family income or not? Using 2012 as an example, we assume there is no difference in average family income of high-educated people and non high-educated people in 2012 (null hypothesis). The alternative hypothesis is that there is difference in average family income of high-educated people and non high-educated people in 2012. Again samples were randomly selected, sample size is greater than 30 and smaller than 10% of whole US population. Then we conduct hypothesis test under 95% CL:
+
+```{r}
+gss_2012hedu <- gss_12 %>%
+  filter(year == '2012')
+  inference(y = coninc, x = edu, data = gss_2012hedu, statistic = "mean", type = "ht", null = 0, 
+          alternative = "twosided", method = "theoretical", success = 'high-educated', c("high-educated","non high-educated"))
+```
+
+p_value = < 0.0001 which is really small, so we can reject null hypothesis and conclude that there is difference in average family income of high-educated people and non high-educated people in 2012.
+
+## Conclusion
+This study mainly focuses on the differences bewteen responses in 1972 and 2012. 95% CL is used for all test. Under 95% CL, we can still easily reject null hypothesis and conclude that there is a difference between either income, income satistication, or education level in 1972 and 2012. However, we are currently not aware when doing hypothesis test, the two parameter are pairwise or independent. I recommend more information to be provided, or more hypothesis test to be done to test the relationship between two paramters.
+
+The highlight of this study is that we created new variables with new definitions, and then conducted calculation and tests. Those tests should provide new results that haven't been announced before. 
+
