@@ -1,0 +1,256 @@
+---
+title: "Modeling and prediction for movies"
+output: 
+  html_document: 
+    fig_height: 4
+    highlight: pygments
+    theme: spacelab
+---
+
+## Setup
+### Load packages
+
+```{r load-packages, message = FALSE}
+library(ggplot2)
+library(dplyr)
+library(statsr)
+library(GGally)
+```
+
+### Load data
+
+```{r load-data}
+load("/Users/sophia_lil/Documents/Coursera/Linear Regression and Modeling/Week 4/movies.Rdata")
+```
+
+* * *
+
+## Part 1: Data
+#### Data Introduction
+This project is aimed to figure out how much audiences and critics like movies as well as numerous other variables about the movies. Besides, this study is interested in what attributes make a movie popular, and anything new about moview. The dataset includes information from Rotten Tomatoes (https://www.rottentomatoes.com) and IMDB (http://www.imdb.com) for a random sample of movies.
+
+The data set is comprised of 651 randomly sampled movies produced and released before 2016. All samples are randomly selected which ensures that the sample statistics can be generalized to the whole American films between 1970 to 2014.
+
+#### Implications from Data
+Any analytical conclusion derived from this study is associated but not causal, because other potential factors are not discussed and excluded. Additionally, there might be biases in results because respondents can choose not to answer all the questions, making the rest of answers not convincing enough when representing whole population.
+
+* * *
+
+## Part 2: Research question
+
+**We are interested in if any of the variable below are influential to a movie's popularity: Released year, released month, IMDB rating, critics score on Rotten Tomatoes, audience score on Rotten Tomatoes, whether or not the director of the movie ever won an Oscar.**
+
+* * *
+
+## Part 3: Exploratory data analysis
+Our main target is the six explanatory variables and one response variable. Let's take a look at the distribution of each variable. 
+
+3.0 Reponse variable, the number of audience votes
+
+The dataset does not define movie's popularity. This study use number of votes on IMDB to represent it. Higher the votes, more popular the movie is. Higher votes mean more people are interested so that are willing to vote. In my own opinion, audience score or audience rating are not representative because even a movie is poorly rated, it can still be 'popular'. A movie with high reputation might not be popular and gain much attention if they don't use popular and famous actors. 
+
+```{r}
+movies %>%
+  ggplot(aes(x = imdb_num_votes)) +
+  geom_histogram(binwidth = 50000) +
+  xlab("Number of votes on IMDB") + 
+  ylab("Frequency") + 
+  ggtitle("Distribution of number of votes on IMDB")
+```
+
+```{r}
+movies %>%
+  summarise(median_vote = median(imdb_num_votes), mean_vote = mean(imdb_num_votes))
+```
+
+The distribution is right skewed because there is a lower limit of 0 votes but no upper limit. The mean of votes is 57532 and median is 15116. Most data accumulate between [0, 200000].
+
+3.1 Movie released year
+
+```{r}
+movies %>%
+  ggplot(aes(x = thtr_rel_year)) +
+  geom_bar() +
+  xlab("Released year") + 
+  ylab("Frequency") + 
+  ggtitle("Distribution of movie released year")
+```
+
+Overall, more and more movies have been produced from 1970 to 2014. In 2006 and 2007, the number of released movies reaches the peak.
+
+3.2 Similarly, we assume that there might be a pattern of movie released month. For example, during summer or winter break there might be more movies.
+
+```{r}
+movies %>%
+  ggplot(aes(x = thtr_rel_month)) +
+  geom_bar() +
+  xlab("Released month") + 
+  ylab("Frequency") + 
+  ggtitle("Distribution of movie released month")
+```
+
+Seems like winter break does have a high movie production. Number of movies in June and October is also relatively high. The whole distribution is kind of uniform.
+
+3.3 IMDB rating 
+
+```{r}
+  ggplot(data = movies, aes(x = imdb_rating)) +
+  geom_histogram(binwidth = 0.5) +
+  xlab("IMDB rating") + 
+  ylab("Frequency") + 
+  ggtitle("Distribution of IMDB rating")
+```
+
+```{r}
+movies %>%
+  summarise(median_imdbr = median(imdb_rating), mean_imdbr = mean(imdb_rating))
+```
+
+The distribution of IMDB rating is slightly left-skewed with mean of 6.59 and median of 6.6.
+
+3.4 Critics score on Rotten Tomatoes
+
+```{r}
+  ggplot(data = movies, aes(x = critics_score)) +
+  geom_histogram(binwidth = 10) +
+  xlab("Critics Score") + 
+  ylab("Frequency") + 
+  ggtitle("Distribution of Critics Score")
+```
+
+```{r}
+movies %>%
+  summarise(median_cs = median(critics_score), mean_cs = mean(critics_score))
+```
+
+The distribution of critics score is left-skewed with mean of 57.69 and median of 61.
+
+3.5 Audience score on Rotten Tomatoes
+
+```{r}
+  ggplot(data = movies, aes(x = audience_score)) +
+  geom_histogram(binwidth = 10) +
+  xlab("Audience Score") + 
+  ylab("Frequency") + 
+  ggtitle("Distribution of Audience Score")
+```
+
+The distribution of audience score is slightly left-skewed because there is a lower limit of 0 score. Most scores fall in [70, 80]. 
+
+Additionally, we can check the relationship between two variables. For example, is the critics scores on Rotten Tomatoes related to audience socre on Rotten Tomatoes? 
+
+```{r}
+ggplot(data = movies, aes(x = critics_score, y = audience_score)) +
+  geom_jitter() +
+  geom_smooth(method = "lm")  +
+  xlab('Critics Score') +
+  ylab('Audience Score') +
+  ggtitle('Relationship between critics score and audience score')
+```
+
+```{r}
+movies %>% 
+  summarise(cor(critics_score, audience_score))
+```
+
+Critics score and audience score are positively related, and covariance is 0.70. The higher the critics score, the higher the audience score. Although it is not a causal relationship, this result can provide some clues for future studies. 
+
+3.6 The last explanatory variable is 'whether or not the director of the movie ever won an Oscar'. It is a categorical variable. 
+
+```{r}
+movies %>%
+  ggplot(aes(x = best_dir_win)) +
+  geom_bar() +
+  xlab('Whether or not has won a Oscar before') +
+  ylab('Frequency')
+```
+
+```{r}
+movies %>%
+  group_by(best_dir_win) %>%
+  summarise(n=n())
+```
+
+Apparently, most of the director haven't won a best director award. Directors of 43 among 651 movies have won one before.
+
+* * *
+
+## Part 4: Modeling
+
+Before establishing model, let's take a look at all numerical explanatory variables to check collinearity. Collinearity means two variables are related (dependent on each other), causing unreliable estimates from the model. 
+
+```{r}
+movies_reg <- movies %>%
+  select(imdb_num_votes, thtr_rel_year, thtr_rel_month, imdb_rating, critics_score, audience_score, best_dir_win)
+```
+
+```{r}
+ggpairs(movies_reg, columns = 2:6)
+```
+
+Audience score is highly related to critics score (corr: 0.704) and IMDB rating (corr: 0.865). Critics score and IMDB rating are highly related too (corr: 0.765). These variables are collinear (correlated), and adding more than one of these variables to the model would not add much value to the model. We eliminate critics score and IMDB rating, and keep audience score in our model.  
+
+```{r}
+movies_reg_2 <- movies_reg %>%
+  select(imdb_num_votes, thtr_rel_year, thtr_rel_month, audience_score, best_dir_win)
+```
+
+Now let's establish a multiple regression model with four explanatory variables:
+
+```{r}
+m_movie <- lm(imdb_num_votes ~ thtr_rel_year + thtr_rel_month + audience_score + best_dir_win, data = movies_reg_2)
+summary(m_movie)
+```
+
+Four explanatory variables all have small p-value (<0.05), meaning that they are statistically significant to the response variable. Adjusted R squared is 14.85%. 
+
+Always be cautious that P-values and parameter estimates should only be trusted if the conditions for the regression are reasonable.
+
+```{r}
+plot(m_movie)
+```
+
+```{r}
+hist(m_movie$residuals)
+```
+
+The residual plots of numerical x are kind of scattered plotted with a center at 0. There are some outliers but most of them are acceptable. 
+
+But apparently, the data are right skewed. The qq plot is extremely deviated from normal-distributed line (the straight line) on the right side. Diagnostic plots do not provide enough evidence that regression model is reasonable. 
+
+However, since it is a practice homework, I will not redo my data analysis and regression model. Please be aware that I do not think this model provides reliable estimates, but just for homework use, I will still complete prediction using this model. 
+
+* * *
+
+## Part 5: Prediction
+
+Movie 'Finding Dory' is picked for model prediction. This movies was released in June 17, 2016. The audience score on Rotten Tomatoes is 87. The director, Andrew Stanton, is an Oscar-winning director. Thus, a new data frame is created for this movie:
+
+```{r}
+newmovie <- data.frame(thtr_rel_year = 2016, thtr_rel_month = 6, audience_score = 87, best_dir_win = "yes")
+predict(m_movie, newmovie)
+```
+
+```{r}
+movies %>%
+  filter(imdb_num_votes > 203992) %>%
+  summarise(n2=n())
+```
+
+The predicted popularity (audience votes) is 203992. This value is higher than most of the movie. Only 45 in the dataset have higher popularity than 'Finding Dory'.
+
+We can also construct a prediction interval around this prediction, which will provide a measure of uncertainty around the prediction:
+
+```{r}
+predict(m_movie, newmovie, interval = "prediction", level = 0.95)
+```
+
+Hence, the model predicts, with 95% confidence, that the popularity (number of audience votes on IMDB) is expected to have an range between [-2371.7, 410355.7]. Number of votes shouldn't be negative. This mistake may result from the unreliable regression model. 
+
+* * *
+
+## Part 6: Conclusion
+
+This project explored a dataset with movies information released between 1970 to 2014. The main purpose is to determine which factor attributes to a movie's popularity. The results shows that although released year, released month, audience score on Rotten Tomatoes, whether or not the director won an Oscar are significant predictors, the model is not reliable enough because the residuals are not normal distributed but right skewed. 
+
+Movie 'Finding Dory' is selected to be predicted using the model. The estimated popularity was 203992 with 95% confidence interval [-2371.7, 410355.7]. However, this result is not convincing enough due to the unreasonable model. Besides, we are predicting a movie released in 2016 which is out of range of x (released year provided is from 1970 to 2014). It is even more possible that the prediction is not reliable. 
